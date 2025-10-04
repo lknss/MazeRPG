@@ -1,0 +1,14 @@
+F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.GeneratedMSBuildEditorConfig.editorconfig
+F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.AssemblyInfoInputs.cache
+F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.AssemblyInfo.cs
+F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.csproj.CoreCompileInputs.cache
+F:\projects\MazeRPG\bin\Debug\net9.0\MazeRPG.exe
+F:\projects\MazeRPG\bin\Debug\net9.0\MazeRPG.deps.json
+F:\projects\MazeRPG\bin\Debug\net9.0\MazeRPG.runtimeconfig.json
+F:\projects\MazeRPG\bin\Debug\net9.0\MazeRPG.dll
+F:\projects\MazeRPG\bin\Debug\net9.0\MazeRPG.pdb
+F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.dll
+F:\projects\MazeRPG\obj\Debug\net9.0\refint\MazeRPG.dll
+F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.pdb
+F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.genruntimeconfig.cache
+F:\projects\MazeRPG\obj\Debug\net9.0\ref\MazeRPG.dll
