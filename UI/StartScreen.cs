@@ -12,7 +12,7 @@ namespace MazeRPG.UI
         {
             Console.Clear();
             Console.WriteLine("===================================");
-            Console.WriteLine("               MAZERPG -           ");
+            Console.WriteLine("             - MAZERPG -           ");
             Console.WriteLine("===================================");
             Console.WriteLine("[1] New Game");
             Console.WriteLine("[2] Load Game");
