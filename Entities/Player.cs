@@ -27,8 +27,8 @@ namespace MazeRPG.Entities
         public int X { get; set; } = 0;
         public int Y { get; set; } = 0;
         public PlayerFacing Facing { get; set; } = PlayerFacing.North;
-        public List<Item> Inventory { get; set; } = new List<Item>();
-        public Dictionary<string, Item?> Equipment { get; set; } = new Dictionary<string, Item?>();
+        public List<Items.Item> Inventory { get; set; } = new List<Items.Item>();
+        public Dictionary<string, Items.Item?> Equipment { get; set; } = new Dictionary<string, Items.Item?>();
 
         private Random _rng = new Random();
 
@@ -41,7 +41,7 @@ namespace MazeRPG.Entities
             MaxHP = 80 + Strength*12; HP = MaxHP;
             MaxMana = 30 + Intellect*10; Mana = MaxMana;
             Defense = cls==PlayerClass.Warrior ? 10 : cls==PlayerClass.Hunter ? 6 : cls==PlayerClass.Rogue ? 4 : 2;
-            Inventory.Add(new Item{ Name="Small Health Potion", Rarity=ItemRarity.Common, IsConsumable=true, HealAmount=25, Value=8 });
+            Inventory.Add(new Items.Item{ Name="Small Health Potion", Rarity=Items.ItemRarity.Common, IsConsumable=true, HealAmount=25, Value=8 });
             KnownSpells = new List<Items.Spell>();
             if (Class==PlayerClass.Mage)
             {
@@ -84,7 +84,14 @@ namespace MazeRPG.Entities
             HP = Math.Min(MaxHP, HP + pot.HealAmount); Inventory.Remove(pot); Core.ConsoleHelper.Success($"You used {pot.Name} and recovered {pot.HealAmount} HP.");
         }
 
-        public void AddToInventory(Item item) => Inventory.Add(item);
+        public void UseManaPotion()
+        {
+            var pot = Inventory.FirstOrDefault(i=>i.IsConsumable && i.RestoreMana>0);
+            if (pot==null) { Core.ConsoleHelper.Warning("No mana potion."); return; }
+            Mana = Math.Min(MaxMana, Mana + pot.RestoreMana); Inventory.Remove(pot); Core.ConsoleHelper.Success($"You used {pot.Name} and recovered {pot.RestoreMana} Mana.");
+        }
+
+        public void AddToInventory(Items.Item item) => Inventory.Add(item);
 
         public void LearnSpell(Items.Spell s) { if (KnownSpells.Any(x=>x.Name==s.Name)) return; KnownSpells.Add(s); Core.ConsoleHelper.Success($"Learned spell: {s.Name}"); }
 
@@ -94,7 +101,6 @@ namespace MazeRPG.Entities
             if (Mana < sp.ManaCost) { Core.ConsoleHelper.Warning("Not enough mana."); return false; }
             Mana -= sp.ManaCost;
             if (sp.Damage>0) target.TakeDamage(sp.Damage + Intellect/2);
-            if (sp.Heal>0) HP = Math.Min(MaxHP, HP + sp.Heal + Intellect/2);
             return true;
         }
 
@@ -109,23 +115,28 @@ namespace MazeRPG.Entities
             {
                 var chosen = Inventory[idx-1];
                 if (chosen.IsConsumable && chosen.HealAmount>0) { HP = Math.Min(MaxHP, HP + chosen.HealAmount); Inventory.RemoveAt(idx-1); Core.ConsoleHelper.Success($"You used {chosen.Name} and healed {chosen.HealAmount} HP."); }
+                else if (chosen.IsConsumable && chosen.RestoreMana>0) { Mana = Math.Min(MaxMana, Mana + chosen.RestoreMana); Inventory.RemoveAt(idx-1); Core.ConsoleHelper.Success($"You used {chosen.Name} and restored {chosen.RestoreMana} Mana."); }
                 else { Core.ConsoleHelper.Prompt("Cannot directly equip from here. Use 'equip' to manage equipment."); }
             }
         }
 
         public void ShowEquipmentMenuInteractive()
         {
-            Core.ConsoleHelper.Header("Equipment - slots"); var keys = Equipment.Keys.ToArray();
-            for (int i=0;i<keys.Length;i++){ var k=keys[i]; var it=Equipment[k]; Core.ConsoleHelper.PrintRarity($"{i+1}. {k}: {(it==null?"(empty)":it.Name)}", it?.Rarity ?? ItemRarity.Common, it?.Value ?? 0); }
+            Core.ConsoleHelper.Header("Equipment - Manage");
+            var keys = Equipment.Keys.ToArray();
+            for (int i=0;i<keys.Length;i++){ var k=keys[i]; var it=Equipment[k]; Core.ConsoleHelper.PrintRarity($"{i+1}. {k}: {(it==null?"(empty)":it.Name)}", it?.Rarity ?? Items.ItemRarity.Common, it?.Value ?? 0); }
             Core.ConsoleHelper.Prompt("Type slot number to equip an item from inventory, or Enter to back."); var input = Console.ReadLine();
             if (int.TryParse(input, out int sidx) && sidx>=1 && sidx<=keys.Length)
             {
-                var slot = keys[sidx-1]; Console.WriteLine("Choose inventory item number to equip into this slot:"); for (int i=0;i<Inventory.Count;i++) Console.WriteLine($"{i+1}. {Inventory[i].Name} ({Inventory[i].Rarity}) - {Inventory[i].Value}g"); var ii = Console.ReadLine();
+                var slot = keys[sidx-1];
+                Console.WriteLine("Choose inventory item number to equip into this slot:");
+                for (int i=0;i<Inventory.Count;i++) Console.WriteLine($"{i+1}. {Inventory[i].Name} ({Inventory[i].Rarity}) - {Inventory[i].Value}g");
+                var ii = Console.ReadLine();
                 if (int.TryParse(ii, out int invIdx) && invIdx>=1 && invIdx<=Inventory.Count) { var item = Inventory[invIdx-1]; Equipment[slot] = item; Inventory.RemoveAt(invIdx-1); Core.ConsoleHelper.Success($"Equipped {item.Name} into {slot}."); }
             }
         }
 
-        public void ShowSpellbook() { Core.ConsoleHelper.Header("Spellbook"); if (!IsMage) { Core.ConsoleHelper.Warning("You are not a mage."); return; } for (int i=0;i<KnownSpells.Count;i++){ var s = KnownSpells[i]; Console.WriteLine($"{i+1}. {s.Name} - Cost: {s.ManaCost}  Damage: {s.Damage}  Heal: {s.Heal}"); } if (KnownSpells.Count==0) Console.WriteLine("You know no spells."); }
+        public void ShowSpellbook() { Core.ConsoleHelper.Header("Spellbook"); if (!IsMage) { Core.ConsoleHelper.Warning("You are not a mage."); return; } for (int i=0;i<KnownSpells.Count;i++){ var s = KnownSpells[i]; Console.WriteLine($"{i+1}. {s.Name} - Cost: {s.ManaCost}  Damage: {s.Damage}"); } if (KnownSpells.Count==0) Console.WriteLine("You know no spells."); }
 
         public void ShowStats() { Core.ConsoleHelper.Header("Stats"); Console.WriteLine($"Class: {Class} Level: {Level} XP: {XP}"); Console.WriteLine($"HP: {HP}/{MaxHP}   Mana: {Mana}/{MaxMana}"); Console.WriteLine($"STR: {Strength}  AGI: {Agility}  INT: {Intellect}  DEF: {Defense}"); Console.WriteLine($"Gold: {Gold}"); }
 

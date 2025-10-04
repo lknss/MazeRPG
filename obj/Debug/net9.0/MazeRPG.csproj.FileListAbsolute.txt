@@ -12,3 +12,4 @@ F:\projects\MazeRPG\obj\Debug\net9.0\refint\MazeRPG.dll
 F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.pdb
 F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.genruntimeconfig.cache
 F:\projects\MazeRPG\obj\Debug\net9.0\ref\MazeRPG.dll
+F:\projects\MazeRPG\obj\Debug\net9.0\MazeRPG.sourcelink.json

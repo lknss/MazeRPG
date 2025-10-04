@@ -9,7 +9,7 @@ namespace MazeRPG.Combat
 {
     public static class CombatSystem
     {
-        public static void Fight(Player player, Enemy enemy, int depth, RunStats stats)
+        public static void Fight(Player player, Enemy enemy, int depth, RunStats stats, bool isBoss=false, Action? onBossDefeated=null)
         {
             ConsoleHelper.Danger($"Combat started: {enemy.Name} (HP {enemy.HP})");
             while (player.IsAlive && enemy.IsAlive)
@@ -29,7 +29,7 @@ namespace MazeRPG.Combat
                     player.ShowSpellbook();
                     ConsoleHelper.Prompt("Cast which spell (name or number)?");
                     var s = (Console.ReadLine() ?? "").Trim();
-                    Items.Spell spell = null;
+                    Items.Spell? spell = null;
                     if (int.TryParse(s, out int si) && si>=1 && si<=player.KnownSpells.Count) spell = player.KnownSpells[si-1];
                     else spell = player.KnownSpells.Find(x=>x.Name.Equals(s, StringComparison.OrdinalIgnoreCase));
                     if (spell!=null)
@@ -38,27 +38,22 @@ namespace MazeRPG.Combat
                         else
                         {
                             player.Mana -= spell.ManaCost;
-                            if (spell.Damage>0)
-                            {
-                                int dmg = spell.Damage + player.Intellect/2;
-                                bool crit = player.CheckCritical();
-                                if (crit) { dmg *= 2; ConsoleHelper.Color("Spell critical!", ConsoleColor.Magenta); stats.CritsLanded++; }
-                                enemy.TakeDamage(dmg);
-                                ConsoleHelper.Color($"{spell.Name} hits for {dmg} damage.", ConsoleColor.Magenta);
-                            }
-                            if (spell.Heal>0)
-                            {
-                                int heal = spell.Heal + player.Intellect/2;
-                                player.HP = Math.Min(player.MaxHP, player.HP + heal);
-                                ConsoleHelper.Color($"{spell.Name} heals you for {heal}.", ConsoleColor.Blue);
-                            }
+                            ConsoleHelper.Color(spell.EffectText, ConsoleColor.Cyan);
+                            int dmg = spell.Damage + player.Intellect/2;
+                            bool crit = player.CheckCritical();
+                            if (crit) { dmg *= 2; ConsoleHelper.Color("Spell critical!", ConsoleColor.Magenta); stats.CritsLanded++; }
+                            enemy.TakeDamage(dmg);
+                            ConsoleHelper.Color($"{spell.Name} hits for {dmg} damage.", ConsoleColor.Magenta);
                         }
                     }
                     else ConsoleHelper.Warning("Spell not found.");
                 }
                 else if (cmd == "use")
                 {
-                    player.UseConsumable();
+                    Core.ConsoleHelper.Prompt("Use: (1) Health Potion  (2) Mana Potion  (Enter to cancel)");
+                    var pick = Console.ReadLine()?.Trim();
+                    if (pick == "1") player.UseConsumable();
+                    else if (pick == "2") player.UseManaPotion();
                 }
                 else if (cmd == "run")
                 {
@@ -79,11 +74,18 @@ namespace MazeRPG.Combat
 
             if (!enemy.IsAlive)
             {
-                ConsoleHelper.Success($"You defeated {enemy.Name}!"); 
-                var drop = LootTable.EnemyDrop(player.Class, depth);
-                if (drop != null) { ConsoleHelper.Loot("Dropped:"); ConsoleHelper.PrintRarity(drop.Name, drop.Rarity, drop.Value); player.AddToInventory(drop); stats.ItemsFound++; }
-                if (new Random().NextDouble() < 0.08) { var key = new Items.Item { Name = "Brass Key", Rarity = ItemRarity.Common, IsKey=true, KeyId = System.Guid.NewGuid().ToString(), Value=12 }; player.AddToInventory(key); ConsoleHelper.Loot($"Enemy dropped a key: {key.Name}"); }
-                stats.MobKills++;
+                ConsoleHelper.Success($"You defeated {enemy.Name}!");
+                if (isBoss)
+                {
+                    onBossDefeated?.Invoke();
+                }
+                else
+                {
+                    var drop = LootTable.EnemyDrop(player.Class, depth);
+                    if (drop != null) { ConsoleHelper.Loot("Dropped:"); ConsoleHelper.PrintRarity(drop.Name, drop.Rarity, drop.Value); player.AddToInventory(drop); stats.ItemsFound++; }
+                    if (new Random().NextDouble() < 0.08) { var key = new Items.Item { Name = "Brass Key", Rarity = ItemRarity.Common, IsKey=true, KeyId = System.Guid.NewGuid().ToString(), Value=12 }; player.AddToInventory(key); ConsoleHelper.Loot($"Enemy dropped a key: {key.Name}"); }
+                    stats.MobKills++;
+                }
             }
             if (!player.IsAlive) { ConsoleHelper.Danger("You have died."); var ds = new UI.DeathScreen(player, stats); ds.Show(); }
         }

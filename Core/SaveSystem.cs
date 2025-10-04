@@ -12,7 +12,7 @@ namespace MazeRPG.Core
 
         public static void EnsureFolder() { if (!Directory.Exists(SaveFolder)) Directory.CreateDirectory(SaveFolder); }
 
-        public static void Save(string slot, Player player)
+        public static void Save(string slot, Player player, RunStats stats)
         {
             EnsureFolder();
             var dto = new
@@ -24,7 +24,8 @@ namespace MazeRPG.Core
                 MaxHP = player.MaxHP,
                 Mana = player.Mana,
                 MaxMana = player.MaxMana,
-                Gold = player.Gold
+                Gold = player.Gold,
+                Stats = stats
             };
             var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(Path.Combine(SaveFolder, slot + ".json"), json);

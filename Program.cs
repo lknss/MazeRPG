@@ -1,15 +1,15 @@
 
 using System;
-using MazeRPG.UI;
 using MazeRPG.Core;
+using MazeRPG.UI;
 
 namespace MazeRPG
 {
-    internal static class Program
+    public static class Program
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            Console.Title = "MazeRPG - Console";
+            Console.Title = "MazeRPG";
             var start = new StartScreen();
             while (true)
             {

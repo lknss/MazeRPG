@@ -12,12 +12,14 @@ namespace MazeRPG.Entities
 
         public Merchant(PlayerClass cls, int depth)
         {
-            // Stock relevant items and a few consumables
-            if (cls == PlayerClass.Mage) Stock.Add(new Item { Name="Mana Potion", Rarity=ItemRarity.Common, IsConsumable=true, HealAmount=0, Value=15 });
+            if (cls == PlayerClass.Mage) Stock.Add(new Item { Name="Mana Potion", Rarity=ItemRarity.Common, IsConsumable=true, RestoreMana=30, Value=18 });
             Stock.Add(new Item { Name="Health Potion", Rarity=ItemRarity.Common, IsConsumable=true, HealAmount=30, Value=12 });
             if (cls!=PlayerClass.Mage) Stock.Add(new Item { Name="Sturdy Boots", Rarity=ItemRarity.Uncommon, Value=30 });
-            // a few random items
-            for (int i=0;i<2;i++) Stock.Add(LootTable.ChestRoll(cls, depth));
+            for (int i=0;i<2;i++)
+            {
+                var it = LootTable.ChestRoll(cls, depth);
+                if (it!=null) Stock.Add(it);
+            }
         }
 
         public void Show(Entities.Player player)

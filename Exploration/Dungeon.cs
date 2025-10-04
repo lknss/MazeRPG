@@ -20,6 +20,8 @@ namespace MazeRPG.Exploration
         private Random _rng;
         private int _depth = 1;
         private int _roomIndex = 1;
+        private string _theme = "Crypt";
+        private bool _bossAlive = false;
 
         public Dungeon(int width, int height, Random rng)
         {
@@ -32,29 +34,38 @@ namespace MazeRPG.Exploration
 
         private void Generate()
         {
+            var themes = RoomDescriptions.ThemeKeys;
+            _theme = themes[(_depth - 1) % themes.Length];
+
             for (int x = 0; x < _width; x++)
                 for (int y = 0; y < _height; y++)
                 {
                     var r = new Room();
-                    r.Description = RoomDescriptions.Descriptions[_rng.Next(RoomDescriptions.Descriptions.Count)];
-                    r.HasChest = _rng.NextDouble() < 0.12;
+                    r.Description = RoomDescriptions.PickForTheme(_theme, x + y + _depth);
+                    r.HasChest = false;
                     r.HasExit = false;
                     r.IsSafe = _rng.NextDouble() < 0.06;
-                    if (_rng.NextDouble() < 0.05) r.RequiredKeyId = Guid.NewGuid().ToString();
+                    if (_rng.NextDouble() < 0.04) r.RequiredKeyId = Guid.NewGuid().ToString();
                     _rooms[x, y] = r;
                 }
+
+            int tier = (_depth - 1) / 5;
+            double baseChestChance = 0.05 + tier * 0.06;
+            for (int x = 0; x < _width; x++) for (int y = 0; y < _height; y++) if (_rng.NextDouble() < baseChestChance) _rooms[x,y].HasChest = true;
 
             if (_depth <= 2)
             {
                 for (int x = 0; x < _width; x++) for (int y = 0; y < _height; y++) _rooms[x,y].HasChest = false;
-                if (_rng.NextDouble() < 0.5) _rooms[_rng.Next(_width), _rng.Next(_height)].HasChest = true;
-            }
-            else
-            {
-                if (_rng.NextDouble() < 0.15) { for (int x = 0; x < _width; x++) for (int y = 0; y < _height; y++) _rooms[x,y].HasChest = false; }
+                if (_rng.NextDouble() < 0.6) _rooms[_rng.Next(_width), _rng.Next(_height)].HasChest = true;
             }
 
-            _rooms[_rng.Next(_width), _rng.Next(_height)].HasExit = true;
+            int ex = _rng.Next(_width), ey = _rng.Next(_height);
+            _rooms[ex, ey].HasExit = true;
+            if (_depth % 5 == 0)
+            {
+                _rooms[ex, ey].ExitLocked = true;
+                _bossAlive = true;
+            }
         }
 
         public void EnterLoop(Entities.Player player, RunStats stats)
@@ -83,11 +94,20 @@ namespace MazeRPG.Exploration
                         DescribeNearby(player);
                         MarkVisibleAndRender(player);
                         stats.RoomsExplored++;
-                        if (_rng.NextDouble() < 0.06)
+                        if (_rng.NextDouble() < Math.Min(0.25, 0.06 + _depth * 0.01))
                         {
-                            var enemy = Entities.Enemy.CreateForDepth(_depth, _rng);
-                            ConsoleHelper.Danger($"A wild {enemy.Name} appears!");
-                            Combat.CombatSystem.Fight(player, enemy, _depth, stats);
+                            if (_depth % 5 == 0 && _bossAlive)
+                            {
+                                var boss = Enemy.CreateBossForDepth(_depth, _rng);
+                                ConsoleHelper.Danger($"A powerful {boss.Name} appears!");
+                                Combat.CombatSystem.Fight(player, boss, _depth, stats, isBoss:true, onBossDefeated: () => { HandleBossDefeat(player, stats); });
+                            }
+                            else
+                            {
+                                var enemy = Entities.Enemy.CreateForDepth(_depth, _rng);
+                                ConsoleHelper.Danger($"A wild {enemy.Name} appears!");
+                                Combat.CombatSystem.Fight(player, enemy, _depth, stats);
+                            }
                         }
                     }
                     else ConsoleHelper.Warning("You cannot move that way.");
@@ -100,14 +120,13 @@ namespace MazeRPG.Exploration
                         Console.Clear();
                         ConsoleHelper.Color($"You turn {dir}.", ConsoleColor.Cyan);
                         InspectFacing(player);
+                        MarkVisibleAndRender(player);
                     }
                     else ConsoleHelper.Warning("Invalid direction.");
                 }
                 else if (cmd == "search")
                 {
-                    // search current tile first
                     if (HandleSearchAt(player.X, player.Y, player, stats)) continue;
-                    // then search tile in front of player
                     var (fx, fy) = player.FacingVector();
                     int tx = player.X + fx, ty = player.Y + fy;
                     if (tx >= 0 && ty >= 0 && tx < _rooms.GetLength(0) && ty < _rooms.GetLength(1))
@@ -134,7 +153,7 @@ namespace MazeRPG.Exploration
                     }
                     else ConsoleHelper.Warning("You can only rest in safe zones.");
                 }
-                else if (cmd == "save") { Core.SaveSystem.Save("autosave", player); ConsoleHelper.Success("Saved."); }
+                else if (cmd == "save") { Core.SaveSystem.Save("autosave", player, stats); ConsoleHelper.Success("Saved."); }
                 else if (cmd == "quit") return;
                 else ConsoleHelper.Warning("Unknown command.");
             }
@@ -142,10 +161,23 @@ namespace MazeRPG.Exploration
             stats.Finish();
         }
 
+        private void HandleBossDefeat(Player player, RunStats stats)
+        {
+            _bossAlive = false;
+            for (int x=0;x<_width;x++) for (int y=0;y<_height;y++) if (_rooms[x,y].HasExit) _rooms[x,y].ExitLocked = false;
+            ConsoleHelper.Success($"You have defeated the boss of Depth {_depth}.");
+            Console.WriteLine(new string('-', 40));
+            Console.WriteLine($"    You have cleared the tier ending at depth {_depth}    ");
+            Console.WriteLine(new string('-', 40));
+            var bossLoot = LootTable.GenerateGuaranteedBossLoot(player.Class, _depth);
+            if (bossLoot != null) { ConsoleHelper.Loot("Boss dropped:"); ConsoleHelper.PrintRarity(bossLoot.Name, bossLoot.Rarity, bossLoot.Value); player.AddToInventory(bossLoot); stats.ItemsFound++; }
+            int gold = LootTable.BossGoldForDepth(_depth);
+            player.Gold += gold; stats.GoldEarned += gold; ConsoleHelper.Success($"You collect {gold} gold.");
+        }
+
         private bool HandleSearchAt(int rx, int ry, Entities.Player player, RunStats stats)
         {
             var room = _rooms[rx, ry];
-            // chest on the tile
             if (room.HasChest)
             {
                 var loot = LootTable.ChestRoll(player.Class, _depth);
@@ -155,10 +187,13 @@ namespace MazeRPG.Exploration
                 return true;
             }
 
-            // exit handling (on tile or adjacent)
             if (room.HasExit)
             {
-                // if this exit requires a key id (locked)
+                if (room.ExitLocked)
+                {
+                    ConsoleHelper.Warning("The exit is sealed by a powerful force. Defeat the boss to proceed.");
+                    return true;
+                }
                 if (!string.IsNullOrEmpty(room.RequiredKeyId))
                 {
                     bool hasKey = player.Inventory.Exists(i => i.IsKey && i.KeyId == room.RequiredKeyId);
@@ -178,7 +213,6 @@ namespace MazeRPG.Exploration
                     else { ConsoleHelper.Prompt("You step back from the locked exit."); return true; }
                 }
 
-                // unlocked exit: prompt to go through
                 ConsoleHelper.Prompt("You found an exit. Go through? (y/n)");
                 var ans = (Console.ReadLine() ?? "").Trim().ToLower();
                 if (ans == "y") { AdvanceFloor(player, stats); }
@@ -192,7 +226,7 @@ namespace MazeRPG.Exploration
         private void AdvanceFloor(Entities.Player player, RunStats stats)
         {
             _depth++; _roomIndex++;
-            Generate(); // regenerate rooms for new depth
+            Generate();
             player.X = _width / 2; player.Y = _height / 2;
             _explored = new bool[_width, _height];
             _minimap = new char[_width, _height];

@@ -64,7 +64,7 @@ namespace MazeRPG.Core
             Console.ForegroundColor = prev;
         }
 
-        public static void PrintRarity(string name, ItemRarity rarity, int value = 0)
+        public static void PrintRarity(string name, Items.ItemRarity rarity, int value = 0)
         {
             var prev = Console.ForegroundColor;
             Console.ForegroundColor = rarity switch
@@ -102,7 +102,7 @@ namespace MazeRPG.Core
                     if (x == px && y == py)
                     {
                         var prev = Console.ForegroundColor;
-                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.ForegroundColor = ConsoleColor.White;
                         Console.Write('@');
                         Console.ForegroundColor = prev;
                     }
@@ -114,8 +114,8 @@ namespace MazeRPG.Core
 
             Console.Write("  +"); for (int i = 0; i < w; i++) Console.Write("-"); Console.WriteLine("+");
 
-            string compass = p.Facing switch { Entities.PlayerFacing.North => "↑ N", Entities.PlayerFacing.South => "↓ S", Entities.PlayerFacing.East => "→ E", Entities.PlayerFacing.West => "← W", _ => "?" };
-            Console.WriteLine($"  Compass: {compass}    Legend: @=You .=Floor C=Chest E=Exit  ");
+            string compass = p.Facing switch { Entities.PlayerFacing.North => "N", Entities.PlayerFacing.South => "S", Entities.PlayerFacing.East => "E", Entities.PlayerFacing.West => "W", _ => "?" };
+            Console.WriteLine($"  Compass: {compass}    Legend: @=You .=Floor C=Chest E=Exit");
             var prevc = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Green;
             Console.Write($"HP: {p.HP}/{p.MaxHP}  ");
